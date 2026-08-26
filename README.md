@@ -41,11 +41,13 @@ stdin, so it can never block on an interactive prompt.
 ## Development
 
 ```sh
-node --test tests/cli-args.test.js    # CLI argument parsing (issue #6)
-node --test tests/png-decode.test.js  # Zero-dependency PNG decoder (issue #7)
-node --test tests/png-writer.test.js  # PNG writer + expanded-image renderer (issue #5)
-node --test tests/engine.test.js      # Autotile tables, layouts, detection, expansion (issue #2)
-node --test tests/                    # everything
+node --test tests/cli-args.test.js        # CLI argument parsing (issue #6)
+node --test tests/png-decode.test.js      # Zero-dependency PNG decoder (issue #7)
+node --test tests/png-writer.test.js      # PNG writer + expanded-image renderer (issue #5)
+node --test tests/tmx-writer.test.js      # TMX intermediate writer (issue #4)
+node --test tests/tileset-writer.test.js  # Final tileset writer (TSX/TSJ) (issue #3)
+node --test tests/engine.test.js          # Autotile tables, layouts, detection, expansion (issue #2)
+node --test tests/                        # everything
 ```
 
 The autotile engine lives in `engine.js`: a pure-JS port of the mapping logic
@@ -66,5 +68,15 @@ transparent), and `encodePng({ width, height, pixels })` serialises that image
 as a PNG (colour type 6, bit depth 8) using only `node:zlib`. `sourceImage` is
 exactly what `decodePng` (in `png-decode.js`) returns:
 `{ width, height, pixels }` with a row-major RGBA `Uint8Array`.
+
+The final tileset writer lives in `tileset-writer.js` (issue #3): a pure
+`writeTileset({ name, tileWidth, tileHeight, imagePath, imageWidth,
+imageHeight, transparentColor, format })` that returns the "Save Tileset As"
+output of the original script as a string. It produces a Tiled TSX (XML) or
+TSJ (JSON) tileset that references the intermediate expanded image (TMX or
+PNG) as its `image` source, computes `tilecount`/`columns` from the image and
+tile dimensions, and emits an optional lowercase `#rrggbb` `trans` /
+`transparentcolor`. Story #7 wires the `format` selection from `--output` /
+`--tileset-format`.
 
 Node >= 18, no third-party dependencies.
