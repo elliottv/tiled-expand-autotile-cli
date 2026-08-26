@@ -38,17 +38,65 @@ Errors are printed to stderr as `Error: <message>` (plus a usage hint) with
 exit code 1; `--help` prints usage to stdout and exits 0. The CLI never reads
 stdin, so it can never block on an interactive prompt.
 
+## Usage
+
+Expand a 512x384 RPG Maker A2 tileset (32x24 subtiles at 16px) into a Tiled
+tileset, keeping the intermediate map as a TMX next to the source:
+
+```sh
+node tiled-expand-autotile-cli.js \
+  --source tileset.png \
+  --tile-width 32 \
+  --tile-height 32 \
+  --output expanded.tsx \
+  --layout a2
+```
+
+This writes:
+
+- `tileset.tmx` — the intermediate expanded "metatileset" map (112x56, GIDs
+  pointing at the source image), and
+- `expanded.tsx` — the final Tiled tileset (32x32 tiles) referencing the TMX.
+
+The same source with `--intermediate-format png` writes
+`tileset_expanded.png` (1792x896) instead of the TMX:
+
+```sh
+node tiled-expand-autotile-cli.js \
+  --source tileset.png \
+  --tile-width 32 \
+  --tile-height 32 \
+  --output expanded.tsx \
+  --layout a2 \
+  --intermediate-format png
+```
+
+If the source dimensions don't pin down the layout (32x24 subtiles can be A1
+or A2), pass `--layout` explicitly — the CLI never prompts. Non-zero
+margins/spacing are suspected when the naive subtile grid exceeds the clean
+tile count; the run then aborts with exit 1 unless `--allow-margins` is given
+(no interactive "continue anyway?" confirmation — that is the flag).
+
 ## Development
 
 ```sh
-node --test tests/cli-args.test.js        # CLI argument parsing (issue #6)
-node --test tests/png-decode.test.js      # Zero-dependency PNG decoder (issue #7)
-node --test tests/png-writer.test.js      # PNG writer + expanded-image renderer (issue #5)
-node --test tests/tmx-writer.test.js      # TMX intermediate writer (issue #4)
+node --test tests/e2e.test.js          # End-to-end acceptance suite (issue #8)
+node --test tests/cli-args.test.js     # CLI argument parsing (issue #6)
+node --test tests/png-decode.test.js   # Zero-dependency PNG decoder (issue #7)
+node --test tests/png-writer.test.js   # PNG writer + expanded-image renderer (issue #5)
+node --test tests/tmx-writer.test.js   # TMX intermediate writer (issue #4)
 node --test tests/tileset-writer.test.js  # Final tileset writer (TSX/TSJ) (issue #3)
-node --test tests/engine.test.js          # Autotile tables, layouts, detection, expansion (issue #2)
-node --test tests/                        # everything
+node --test tests/engine.test.js       # Autotile tables, layouts, detection, expansion (issue #2)
+node --test tests/                     # everything
 ```
+
+The end-to-end acceptance suite (`tests/e2e.test.js`) runs the real CLI as a
+subprocess with stdin closed and asserts on the files it writes. It builds
+synthetic fixtures in-test (unique-colour 16px subtiles via the story-5
+encoder), checks the intermediate TMX map dims (112x56) and CSV GIDs against
+the story-3 engine output, samples the intermediate PNG's pixels (1792x896)
+back to the source subtiles, and covers naming, `transparentcolor`, overwrite
+guarding, layout selection/errors, `--help`, and the `--allow-margins` guard.
 
 The autotile engine lives in `engine.js`: a pure-JS port of the mapping logic
 from the original Tiled script (`ExpandRPGMTileset.js`), including the T/W/U
