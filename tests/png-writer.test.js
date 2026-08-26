@@ -125,14 +125,20 @@ function pixelAt(pixels, width, x, y) {
   return [pixels[o], pixels[o + 1], pixels[o + 2], pixels[o + 3]];
 }
 
-/** Deterministic pseudo-random RGBA image of the given size (varied alpha). */
+/**
+ * Deterministic pseudo-random RGBA image of the given size (varied alpha).
+ *
+ * Uses the HIGH byte of the LCG state per sample, which is essentially
+ * incompressible by zlib; this keeps the multiple-IDAT-chunks test honest
+ * (a 200x200 image deflates to > 64 KiB and therefore spans > 1 chunk).
+ */
 function makeRandomRgba(width, height, seed) {
   const pixels = new Uint8Array(width * height * 4);
   let state = seed >>> 0;
   for (let i = 0; i < pixels.length; i++) {
-    // Simple LCG so the data is incompressible-ish (exercises chunk splitting).
+    // Simple LCG (Numerical Recipes constants); high byte is well-mixed.
     state = (state * 1664525 + 1013904223) >>> 0;
-    pixels[i] = state & 0xff;
+    pixels[i] = (state >>> 24) & 0xff;
   }
   return { width, height, pixels };
 }
@@ -218,7 +224,8 @@ test('encodePng emits valid PNG structure (signature, IHDR, IEND, chunk CRCs)', 
 });
 
 test('encodePng splits large IDAT data into multiple chunks', () => {
-  // ~160 KB of incompressible RGBA data; deflate keeps it well above 64 KiB.
+  // ~160 KB of incompressible RGBA data: deflate keeps it well above 64 KiB,
+  // so the encoder must split the IDAT stream into several chunks.
   const img = makeRandomRgba(200, 200, 0x12345678);
   const png = encodePng(img);
   const chunks = parseChunks(png);
