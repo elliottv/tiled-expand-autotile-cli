@@ -3,6 +3,11 @@
 /**
  * Acceptance tests for the CLI argument parser & validation (issue #6).
  *
+ * Since story #8 wired the full expansion pipeline into main(), the
+ * end-to-end (subprocess) tests in this file must use a REAL PNG source and a
+ * valid layout so the whole pipeline succeeds. The pure parser/validation
+ * tests are unchanged.
+ *
  * Run with: node --test tests/cli-args.test.js   (Node >= 18, no deps)
  */
 
@@ -15,6 +20,7 @@ const path = require('node:path');
 
 const cliPath = path.join(__dirname, '..', 'tiled-expand-autotile-cli.js');
 const cli = require(cliPath);
+const { encodePng } = require('../png-writer.js');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -36,10 +42,17 @@ function makeTempDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'tiled-expand-autotile-'));
 }
 
-/** Create a real (dummy) source image file so --source validation passes. */
+/**
+ * Create a real source image file so --source validation passes AND the full
+ * pipeline can decode it. A 512x384 PNG = 32x24 subtiles of 16px (a valid A2
+ * layout when --layout a2 is passed; auto would be ambiguous on 32x24).
+ */
 function makeSourceFile(dir, name = 'tileset.png') {
   const file = path.join(dir, name);
-  fs.writeFileSync(file, Buffer.from('not a real png, but a regular file'));
+  const width = 512;
+  const height = 384;
+  const pixels = new Uint8Array(width * height * 4).fill(255); // opaque white
+  fs.writeFileSync(file, encodePng({ width, height, pixels }));
   return file;
 }
 
@@ -413,7 +426,7 @@ test('valid invocation exits 0 with stdin closed (no prompt)', () => {
   const dir = makeTempDir();
   const src = makeSourceFile(dir);
   const out = path.join(dir, 'result.tsx');
-  const result = runCli(['--source', src, '--tile-width', '32', '--tile-height', '24', '--output', out]);
+  const result = runCli(['--source', src, '--tile-width', '32', '--tile-height', '32', '--output', out, '--layout', 'a2']);
   assert.equal(result.status, 0, `stderr: ${result.stderr}`);
 });
 
@@ -421,7 +434,7 @@ test('short aliases work end-to-end', () => {
   const dir = makeTempDir();
   const src = makeSourceFile(dir);
   const out = path.join(dir, 'result.tsx');
-  const result = runCli(['-i', src, '-w', '32', '-h', '24', '-o', out]);
+  const result = runCli(['-i', src, '-w', '32', '-h', '32', '-o', out, '-l', 'a2']);
   assert.equal(result.status, 0, `stderr: ${result.stderr}`);
 });
 
@@ -451,7 +464,7 @@ test('invocation with stdin closed returns promptly (proves no prompt)', () => {
   const src = makeSourceFile(dir);
   const out = path.join(dir, 'out.tsx');
   const start = Date.now();
-  const result = runCli(['--source', src, '--tile-width', '32', '--tile-height', '24', '--output', out], {
+  const result = runCli(['--source', src, '--tile-width', '32', '--tile-height', '32', '--output', out, '--layout', 'a2'], {
     timeout: 5000,
   });
   const elapsed = Date.now() - start;
