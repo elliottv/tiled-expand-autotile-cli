@@ -1,0 +1,16 @@
+{
+  "name": "tiled-expand-autotile-cli",
+  "version": "0.1.0",
+  "description": "Expand RPG Maker autotile tilesets into full Tiled tilesets from the command line.",
+  "private": true,
+  "type": "commonjs",
+  "bin": {
+    "tiled-expand-autotile-cli": "tiled-expand-autotile-cli.js"
+  },
+  "scripts": {
+    "test": "node --test tests/"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
