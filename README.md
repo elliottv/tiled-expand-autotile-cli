@@ -41,5 +41,9 @@ stdin, so it can never block on an interactive prompt.
 ## Development
 
 ```sh
-node --test tests/cli-args.test.js   # Node >= 18, no third-party dependencies
+node --test tests/cli-args.test.js    # CLI argument parsing (issue #6)
+node --test tests/png-decode.test.js  # Zero-dependency PNG decoder (issue #7)
+node --test tests/                    # everything
 ```
+
+Node >= 18, no third-party dependencies.
